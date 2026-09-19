@@ -176,6 +176,61 @@ def process_contract(cid: int, path: Path, filename: str):
         # Keep the error in the database so the UI can show a useful message.
 
 
+TEST_CONTRACTS_DIR = ROOT / "test_contracts"
+
+
+def seed_test_contracts():
+    """Optionally preload PDF test contracts committed to GitHub."""
+    enabled = os.getenv("SEED_TEST_CONTRACTS", "true").lower() in {"1", "true", "yes", "on"}
+    if not enabled or not TEST_CONTRACTS_DIR.exists():
+        return
+
+    pdfs = sorted(TEST_CONTRACTS_DIR.glob("*.pdf"))
+    if not pdfs:
+        return
+
+    c = db()
+    try:
+        existing = {row[0] for row in c.execute("SELECT filename FROM contracts").fetchall()}
+        for pdf in pdfs:
+            if pdf.name in existing:
+                continue
+
+            safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", pdf.name)
+            stored_path = UP / f"seed_{safe_name}"
+            if not stored_path.exists():
+                stored_path.write_bytes(pdf.read_bytes())
+
+            cur = c.execute(
+                """INSERT INTO contracts(
+                    name,filename,parties,effective,expires,renewal,payment,
+                    termination,summary,status,error,original_path
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    pdf.stem,
+                    pdf.name,
+                    "[]",
+                    "",
+                    "",
+                    "Processing…",
+                    "Processing…",
+                    "Processing…",
+                    "Test contract is being analyzed by ContractLens.",
+                    "queued",
+                    None,
+                    str(stored_path),
+                ),
+            )
+            cid = cur.lastrowid
+            c.commit()
+            executor.submit(process_contract, cid, stored_path, pdf.name)
+            existing.add(pdf.name)
+    finally:
+        c.close()
+
+
+seed_test_contracts()
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "app": "ContractLens"}
@@ -236,7 +291,7 @@ async def upload(file: UploadFile = File(...)):
     c = db()
     cur = c.execute(
         """INSERT INTO contracts(name,filename,parties,effective,expires,renewal,payment,termination,summary,status,error,original_path)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             Path(original).stem,
             original,
