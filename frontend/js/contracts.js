@@ -43,7 +43,11 @@ async function load(){
     const messages={queued:['Queued — preparing the contract...',15],extracting:['Extracting text and contract structure...',40],analyzing:['AI is identifying dates, obligations and clauses...',75],completed:['Analysis completed successfully!',100],failed:['Analysis failed.',100]};
     for(let i=0;i<180;i++){
       const r=await fetch(`/api/contracts/${contractId}/status`);
-      if(!r.ok) throw new Error('Could not check analysis status');
+      if(!r.ok){
+        let detail='Could not check analysis status';
+        try{const err=await r.json(); detail=err.detail||detail;}catch{}
+        throw new Error(`${detail} (HTTP ${r.status})`);
+      }
       const data=await r.json();
       const item=messages[data.status]||['Processing contract...',50];
       statusText.textContent=item[0]; progress.style.width=item[1]+'%';
@@ -72,7 +76,10 @@ async function load(){
       const fd=new FormData(); fd.append('file',f);
       const r=await fetch('/api/contracts/upload',{method:'POST',body:fd});
       let data={}; try{data=await r.json()}catch{}
-      if(!r.ok)throw new Error(data.detail||'Upload failed');
+      if(!r.ok){
+        const detail=data.detail || data.message || `Server returned HTTP ${r.status}`;
+        throw new Error(`Upload failed (${r.status}): ${detail}`);
+      }
       status.textContent='Upload complete. Starting background analysis…'; progress.style.width='15%';
       await render();
       await monitorContract(data.id);
