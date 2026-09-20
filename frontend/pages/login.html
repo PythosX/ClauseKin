@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Login • ContractLens</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="login-page">
+<div class="login-shell">
+  <div class="login-brand">
+    <div class="logo">CL</div>
+    <div>
+      <b>ContractLens</b>
+      <small>AI contract intelligence</small>
+    </div>
+  </div>
+
+  <div class="login-card">
+    <div class="login-icon">◈</div>
+    <div class="kpi">SECURE WORKSPACE</div>
+    <h1>Welcome back</h1>
+    <p class="muted">Sign in to manage contracts, obligations and deadlines.</p>
+
+    <form id="loginForm">
+      <label>Email</label>
+      <input id="email" type="email" placeholder="demo@contractlens.ai" autocomplete="email" required>
+
+      <label>Password</label>
+      <div class="password-wrap">
+        <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password" required>
+        <button type="button" id="togglePassword" class="password-toggle">Show</button>
+      </div>
+
+      <div class="login-row">
+        <label class="remember">
+          <input id="remember" type="checkbox" checked>
+          <span>Remember me</span>
+        </label>
+      </div>
+
+      <button class="btn login-btn" type="submit">Sign in</button>
+      <div id="loginError" class="login-error"></div>
+    </form>
+
+    <div class="demo-box">
+      <b>Hackathon demo account</b>
+      <div>Email: <code>demo@contractlens.ai</code></div>
+      <div>Password: <code>demo123</code></div>
+    </div>
+  </div>
+
+  <p class="login-footer">ContractLens • AI-powered contract intelligence</p>
+</div>
+
+<script src="../js/auth.js"></script>
+<script>
+if (Auth.isLoggedIn()) location.replace("/pages/dashboard.html");
+
+document.getElementById("togglePassword").onclick = () => {
+  const input = document.getElementById("password");
+  const button = document.getElementById("togglePassword");
+  input.type = input.type === "password" ? "text" : "password";
+  button.textContent = input.type === "password" ? "Show" : "Hide";
+};
+
+document.getElementById("loginForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const password = document.getElementById("password").value;
+  const remember = document.getElementById("remember").checked;
+  const error = document.getElementById("loginError");
+
+  const result = Auth.login(email, password, remember);
+  if (!result.ok) {
+    error.textContent = result.message;
+    return;
+  }
+  location.replace("/pages/dashboard.html");
+});
+</script>
+</body>
+</html>
